@@ -30,7 +30,8 @@ jobs:
 
     - name: Build APK
       run: |
-        flet build apk --verbose
+        flet build apk --verbose --icon icon.png
+        
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v3
