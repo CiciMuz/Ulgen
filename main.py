@@ -1,9 +1,18 @@
 import flet as ft
+from click import style
+from datetime import datetime
 
 def main(page:ft.Page):
     page.title = "Gelir Gider"
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
+    page.scroll = "auto"
+
+    def tam_zaman_getir():
+        an = datetime.now()
+        return an.strftime("%d.%m.%Y %H:%M")
+
+
     page.theme_mode = ft.ThemeMode.DARK
     page.theme = ft.Theme(
         color_scheme=ft.ColorScheme(
@@ -14,7 +23,76 @@ def main(page:ft.Page):
         )
     )
 
+    def ekran_degistir(e):
+        indis = e.control.selected_index
+
+        page.clean()
+
+        if indis == 0:
+            duzenli_gelirler_ekrani()
+        elif indis == 1:
+            ana_ekrani()
+        elif indis == 2:
+            duzenli_giderler_ekrani()
+
+    ust_bar = ft.AppBar(
+        title=ft.Image(src="ulgen.png", height=40),
+        center_title=True,
+        color="black",
+        bgcolor=ft.Colors.AMBER,
+        automatically_imply_leading=False,
+    )
+
+    alt_bar = ft.NavigationBar(
+        indicator_color=ft.Colors.AMBER,
+
+        destinations=[
+            ft.NavigationBarDestination(icon=ft.Icons.ATTACH_MONEY, label="Düzenli Gelirler"),
+            ft.NavigationBarDestination(icon=ft.Icons.HOME_ROUNDED, label="Ana Ekran"),
+            ft.NavigationBarDestination(icon=ft.Icons.MONEY_OFF, label="Düzenli Giderler"),
+        ],
+        selected_index=1,
+        on_change=ekran_degistir
+
+    )
+
+    page.appbar = ust_bar
+    page.navigation_bar = alt_bar
+
+    konteyner=ft.Container(height=50)
+
     guncelpara=page.client_storage.get("guncelpara") or "0"
+
+    def bildirim_goster(mesaj, tur):
+        # Varsayılan değerler
+        bg_renk = ft.Colors.BLUE_GREY
+        ikon = ft.Icons.INFO
+
+        if tur == "olumlu":
+            bg_renk = ft.Colors.GREEN_700  # Koyu Yeşil Arka Plan
+            ikon = ft.Icons.CHECK_CIRCLE  # Tik İkonu
+        elif tur == "olumsuz":
+            bg_renk = ft.Colors.RED_700  # Koyu Kırmızı Arka Plan
+            ikon = ft.Icons.ERROR_OUTLINE  # Hata İkonu
+
+        page.snack_bar = ft.SnackBar(
+            content=ft.Row([
+                ft.Icon(ikon, color=ft.Colors.WHITE),
+                ft.Text(value=mesaj, color=ft.Colors.WHITE, size=16, weight="bold")
+            ]),
+            bgcolor=bg_renk,  # Kutunun rengini değiştiriyoruz (Yazıyı değil)
+
+            # Navigation Bar'ın üzerine çıkması için Floating ve Margin şart
+            behavior=ft.SnackBarBehavior.FLOATING,
+            margin=ft.margin.all(20),
+
+            action="Tamam",
+            action_color=ft.Colors.WHITE,
+            duration=2000,
+        )
+
+        page.snack_bar.open = True
+        page.update()
 
     # ------------------------------------------------------------------------------------------------------------------------
     def guncelpara_degistir(veri):
@@ -33,16 +111,29 @@ def main(page:ft.Page):
 
     # ------------------------------------------------------------------------------------------------------------------------
 
-    def duzenli_gelir_ekle(veri):
+    def duzenli_gelir_ekle(veri)->bool:
+
+        kontrol=veri["Miktar"]
+
+        try:
+            int(kontrol)
+        except:
+            print("Terminal Girdisi: Hata")
+            return False
+
+
 
         mevcut_liste = page.client_storage.get("gelirler_listesi")
-        if mevcut_liste is None:
+
+        if mevcut_liste is None or not isinstance(mevcut_liste, list):
             mevcut_liste = []
+
         tur=veri["Tür"]
         ad=veri["Ad"]
         miktar=veri["Miktar"]
+        tarih=veri["Tarih"]
 
-        yeni_veri = {"Tür": tur,"Ad": ad, "Miktar": miktar}
+        yeni_veri = {"Tür": tur,"Ad": ad, "Miktar": miktar, "Tarih": tarih}
 
 
         mevcut_liste.append(yeni_veri)
@@ -51,9 +142,11 @@ def main(page:ft.Page):
         page.client_storage.set("gelirler_listesi", mevcut_liste)
 
         print("Kayıt başarılı!")
+        return True
 
     def duzenli_gelir_ekleme_ekrani(e=None):
         page.clean()
+        page.scroll = "auto"
 
         ad_field = ft.TextField(label="Gelir Adı",border_color=ft.Colors.AMBER)
         miktar_field = ft.TextField(label="Miktar",border_color=ft.Colors.AMBER)
@@ -63,22 +156,24 @@ def main(page:ft.Page):
 
             gelen_ad = ad_field.value
             gelen_miktar = miktar_field.value
-            yeni_veri = {"Tür": "Gelir", "Ad": gelen_ad, "Miktar": gelen_miktar}
+            yeni_veri = {"Tür": "Gelir", "Ad": gelen_ad, "Miktar": gelen_miktar, "Tarih": tam_zaman_getir()}
 
-            duzenli_gelir_ekle(yeni_veri)
+            sonuc=duzenli_gelir_ekle(yeni_veri)
 
 
-            duzenli_gelirler_ekrani()
+            if sonuc== True:
+                duzenli_gelirler_ekrani()
+            else:
+                print("")
 
         onayla = ft.ElevatedButton(text="Onayla", color=ft.Colors.AMBER,on_click=onayla_tiklandi,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
 
         page.add(
-            ust_bar,
             ft.Text("Yeni Gelir Ekle", size=20,color=ft.Colors.AMBER),
             ad_field,
             miktar_field,
             onayla,
-            alt_bar
+            konteyner,
         )
         page.update()
 
@@ -97,9 +192,10 @@ def main(page:ft.Page):
 
     def duzenli_gelir_kaldirma_ekrani(e=None):
         page.clean()
+        page.scroll = "auto"
         yeni_liste=page.client_storage.get("gelirler_listesi") or []
 
-        gelir_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO, height=400)
+        gelir_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
         gelir_column.controls.append(ft.Text("SİLMEK İSTEDİĞİNİZ GELİRE TIKLAYIN", color="red", weight="bold"))
 
 
@@ -123,19 +219,23 @@ def main(page:ft.Page):
 
         geri_don = ft.ElevatedButton("Geri Dön",color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)), on_click=lambda _: duzenli_gelirler_ekrani())
 
-        page.add(ust_bar, ana_row, gelir_column, geri_don, alt_bar)
+        page.add(ana_row, gelir_column, geri_don, konteyner,)
         page.update()
 
     def duzenli_gelirler_ekrani():
         page.clean()
 
+        page.scroll="auto"
+
         eslesmeler=page.client_storage.get("gelirler_listesi") or []
 
-        gelir_column=ft.Column(alignment=ft.MainAxisAlignment.CENTER,height=400,scroll=ft.ScrollMode.AUTO)
+        gelir_column=ft.Column(alignment=ft.MainAxisAlignment.START)
         ekle_butonu=ft.ElevatedButton(text="Gelir Ekle",width=150,on_click=duzenli_gelir_ekleme_ekrani,color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
         kaldir_butonu = ft.ElevatedButton(text="Gelir Kaldır",width=150, on_click=duzenli_gelir_kaldirma_ekrani,color="red",style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
         butonlar_rowu=ft.Row(controls=[ekle_butonu,kaldir_butonu],alignment=ft.MainAxisAlignment.CENTER)
         for veri in eslesmeler:
+            veri["Tarih"]=tam_zaman_getir()
+            an=veri["Tarih"]
             ad = veri["Ad"]
             miktar = veri["Miktar"]
             temp_buton=ft.ElevatedButton(text=f"Gelir Adı: {ad}\nMiktar: {miktar}",height=75,width=225,color=ft.Colors.AMBER,on_click=lambda e, v=veri: guncelpara_degistir(v),style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
@@ -155,7 +255,7 @@ def main(page:ft.Page):
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
 
-        page.add(ust_bar,ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,gelir_column,alt_bar)
+        page.add(ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,ft.Text(value="\n"),gelir_column,konteyner,)
         page.update()
 
 # ------------------------------------------------------------------------------------------------------------------------
@@ -167,28 +267,47 @@ def main(page:ft.Page):
 
     def log_temizle_ekrani(e=None):
         page.clean()
+        page.scroll = "auto"
         yazi = ft.Text(value="Geçmişi temizlemek istediğinize emin misiniz?")
         evet = ft.ElevatedButton(text="Evet",color=ft.Colors.AMBER,on_click=log_temizleme,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
         hayir = ft.ElevatedButton(text="Hayır",on_click=ana_ekrani,color="red",style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
 
-        page.add(ust_bar,yazi,evet,hayir,alt_bar)
+        page.add(yazi,evet,hayir,konteyner,)
 
     def yeni_veri_ekrani_gelir_gider_ekleme(ad,miktar):
+
+        kontrol = miktar
+
+        try:
+            int(kontrol)
+        except:
+            print("Terminal Girdisi: Hata")
+
+            return False
+
         if int(miktar)<0:
-            yeni_veri = {"Tür": "Gider", "Ad": ad, "Miktar": miktar}
+            yeni_veri = {"Tür": "Gider", "Ad": ad, "Miktar": miktar, "Tarih": tam_zaman_getir() }
         else:
-            yeni_veri = {"Tür": "Gelir", "Ad": ad, "Miktar": miktar}
+            yeni_veri = {"Tür": "Gelir", "Ad": ad, "Miktar": miktar, "Tarih": tam_zaman_getir()}
         guncelpara_degistir(yeni_veri)
+        return True
 
     def yeni_veri_ekrani(e=None):
         page.clean()
+        page.scroll = "auto"
         ad_bari=ft.TextField(label="Ad",border_color=ft.Colors.AMBER)
         girdi_bari=ft.TextField(label="Miktar",border_color=ft.Colors.AMBER)
-        log_temizleme_butonu=ft.ElevatedButton(text="Geçmişi Temizle...",on_click=log_temizle_ekrani,color=ft.Colors.LIGHT_BLUE_ACCENT_400,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.LIGHT_BLUE_ACCENT_700)))
-
         def islem_yap(ad,miktar):
-            yeni_veri_ekrani_gelir_gider_ekleme(ad,miktar)
-            ana_ekrani()
+            sonuc=yeni_veri_ekrani_gelir_gider_ekleme(ad,miktar)
+            if sonuc==True:
+                ana_ekrani()
+            else:
+                print("")
+
+        try:
+            kontrol=str(-1 * int(girdi_bari.value))
+        except:
+            print("Terminal Gider: Hata")
 
 
         gelir_butonu=ft.ElevatedButton(text="      Gelir      ",on_click=lambda e:islem_yap(ad_bari.value,girdi_bari.value),color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
@@ -197,16 +316,15 @@ def main(page:ft.Page):
         page.add(
             ad_bari,
             girdi_bari,
-            alt_bar,
-            ust_bar,
             gelir_butonu,
             gider_butonu,
-            log_temizleme_butonu,
+            konteyner
         )
         page.update()
 
     def guncelpara_sifirla_ekran(e=None):
         page.clean()
+        page.scroll = "auto"
         text=ft.Text(value="Sıfırlamak istediğinize emin misiniz?")
         evet = ft.ElevatedButton(text="Evet", on_click=guncelpara_sifirla,color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
         hayir = ft.ElevatedButton(text="Hayır", on_click=ana_ekrani,color="red",style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
@@ -214,8 +332,7 @@ def main(page:ft.Page):
             text,
             evet,
             hayir,
-            alt_bar,
-            ust_bar
+            konteyner
         )
         page.update()
 
@@ -223,7 +340,7 @@ def main(page:ft.Page):
     def guncelpara_sifirla(e=None):
         nonlocal guncelpara
         deger=str(-1*int(guncelpara))
-        yeni_veri = {"Tür": "Gider", "Ad": "Sıfırlama İşlemi", "Miktar": deger}
+        yeni_veri = {"Tür": "Gider", "Ad": "Sıfırlama İşlemi", "Miktar": deger, "Tarih": tam_zaman_getir()}
         guncelpara_degistir(yeni_veri)
         ana_ekrani()
 
@@ -231,11 +348,12 @@ def main(page:ft.Page):
 
     def ana_ekrani():
         page.clean()
+        page.scroll = "auto"
         eslesmeler=page.client_storage.get("tum_log") or []
 
 
         yeni_veri_ekrani_butonu=ft.ElevatedButton(text="Yeni veri ekle",on_click=yeni_veri_ekrani,color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
-        log_column=ft.Column(alignment=ft.MainAxisAlignment.CENTER,scroll=ft.ScrollMode.AUTO,height=350)
+        log_column=ft.Column(alignment=ft.MainAxisAlignment.CENTER)
 
         para_sifirla=ft.ElevatedButton(text="Bakiye sıfırla...",on_click=guncelpara_sifirla_ekran,color="red",style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
 
@@ -243,11 +361,12 @@ def main(page:ft.Page):
             tur=veri["Tür"]
             ad=veri["Ad"]
             miktar=veri["Miktar"]
+            an=veri["Tarih"]
             if tur=="Gelir":
-                temp=ft.TextField(multiline=True,value=f"Açıklama: {ad}\nMiktar: {miktar}",border_color=ft.Colors.AMBER,read_only=True)
+                temp=ft.TextField(multiline=True,value=f"Açıklama: {ad}\nMiktar: {miktar}\nTarih: {an}",border_color=ft.Colors.AMBER,read_only=True)
                 log_column.controls.append(temp)
             elif tur=="Gider":
-                temp = ft.TextField(multiline=True,value=f"Açıklama: {ad}\nMiktar: {miktar}", border_color="red",read_only=True)
+                temp = ft.TextField(multiline=True,value=f"Açıklama: {ad}\nMiktar: {miktar}\nTarih: {an}", border_color="red",read_only=True)
                 log_column.controls.append(temp)
 
         log_column.controls = log_column.controls[::-1]
@@ -267,15 +386,19 @@ def main(page:ft.Page):
             vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
 
+        log_temizleme_butonu = ft.ElevatedButton(text="Geçmişi Temizle...", on_click=log_temizle_ekrani,color=ft.Colors.LIGHT_BLUE_ACCENT_400, style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.LIGHT_BLUE_ACCENT_700)))
+
+        log_baslangic=temp=ft.TextField(multiline=True,value="Geçmişin Başlangıcı...",border_color=ft.Colors.BLUE_ACCENT_400,read_only=True)
+        log_column.controls.append(log_baslangic)
         page.add(
             ana_row,
             butonlar_row,
+            log_temizleme_butonu,
             ft.Text(value="\n"),
             ayirici,
             ft.Text(value="\n"),
             log_column,
-            ust_bar,
-            alt_bar,
+            konteyner
         )
         page.update()
 
@@ -288,37 +411,48 @@ def main(page:ft.Page):
 
 # ------------------------------------------------------------------------------------------------------------------------
 
-    def duzenli_gider_ekle(veri):
+    def duzenli_gider_ekle(veri) -> bool:
 
+        kontrol = veri["Miktar"]
+
+        try:
+            int(kontrol)
+        except:
+            print("Terminal Girdisi: Hata")
+            return False
 
         mevcut_liste = page.client_storage.get("giderler_listesi")
-        if mevcut_liste is None:
+        if mevcut_liste is None or not isinstance(mevcut_liste, list):
             mevcut_liste = []
+
         tur=veri["Tür"]
         ad=veri["Ad"]
         miktar=veri["Miktar"]
 
-        yeni_veri = {"Tür": tur,"Ad": ad, "Miktar": str(-1*int(miktar))}
+        yeni_veri = {"Tür": tur,"Ad": ad, "Miktar": str(-1*int(miktar)), "Tarih": tam_zaman_getir()}
 
         mevcut_liste.append(yeni_veri)
         page.client_storage.set("giderler_listesi", mevcut_liste)
 
         print("Kayıt başarılı!")
+        return True
 
     def duzenli_gider_ekleme_ekrani(e=None):
         page.clean()
-
+        page.scroll = "auto"
         ad_field = ft.TextField(label="Gider Adı",border_color=ft.Colors.AMBER)
         miktar_field = ft.TextField(label="Miktar",border_color=ft.Colors.AMBER)
 
         def onayla_tiklandi(e):
             gelen_ad = ad_field.value
             gelen_miktar = miktar_field.value
-            yeni_veri = {"Tür": "Gider", "Ad": gelen_ad, "Miktar": gelen_miktar}
-            duzenli_gider_ekle(yeni_veri)
+            yeni_veri = {"Tür": "Gider", "Ad": gelen_ad, "Miktar": gelen_miktar, "Tarih": tam_zaman_getir()}
+            sonuc=duzenli_gider_ekle(yeni_veri)
 
-
-            duzenli_giderler_ekrani()
+            if sonuc is True:
+                duzenli_giderler_ekrani()
+            else:
+                print("")
 
         onayla = ft.ElevatedButton(text="Onayla", on_click=onayla_tiklandi,color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
 
@@ -327,7 +461,7 @@ def main(page:ft.Page):
             ad_field,
             miktar_field,
             onayla,
-            alt_bar
+            konteyner
         )
         page.update()
 
@@ -346,9 +480,10 @@ def main(page:ft.Page):
 
     def duzenli_gider_kaldirma_ekrani(e=None):
         page.clean()
+        page.scroll = "auto"
         yeni_liste=page.client_storage.get("giderler_listesi") or []
 
-        gider_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER, scroll=ft.ScrollMode.AUTO, height=400)
+        gider_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
         gider_column.controls.append(ft.Text("SİLMEK İSTEDİĞİNİZ GİDERE TIKLAYIN", color="red", weight="bold"))
 
 
@@ -372,19 +507,21 @@ def main(page:ft.Page):
 
         geri_don = ft.ElevatedButton("Geri Dön", on_click=lambda _: duzenli_giderler_ekrani(),color="red",style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
 
-        page.add(ust_bar, ana_row, gider_column, geri_don, alt_bar)
+        page.add( ana_row, gider_column, geri_don, konteyner)
         page.update()
 
     def duzenli_giderler_ekrani():
         page.clean()
-
+        page.scroll = "auto"
         eslesmeler=page.client_storage.get("giderler_listesi") or []
 
-        gider_column=ft.Column(alignment=ft.MainAxisAlignment.CENTER,height=400,scroll=ft.ScrollMode.AUTO)
+        gider_column=ft.Column(alignment=ft.MainAxisAlignment.START)
         ekle_butonu=ft.ElevatedButton(text="Gider Ekle",width=150,on_click=duzenli_gider_ekleme_ekrani,color=ft.Colors.AMBER,style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
         kaldir_butonu = ft.ElevatedButton(text="Gider Kaldır",width=150, on_click=duzenli_gider_kaldirma_ekrani,color="red",style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
         butonlar_rowu=ft.Row(controls=[ekle_butonu,kaldir_butonu],alignment=ft.MainAxisAlignment.CENTER)
         for veri in eslesmeler:
+            veri["Tarih"] = tam_zaman_getir()
+            an = veri["Tarih"]
             ad = veri["Ad"]
             miktar = veri["Miktar"]
             temp_buton=ft.ElevatedButton(text=f"Gider Adı: {ad}\nMiktar: {miktar}",height=75,width=225,on_click=lambda e, v=veri: guncelpara_degistir(v),color="red",style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
@@ -404,47 +541,17 @@ def main(page:ft.Page):
             vertical_alignment=ft.CrossAxisAlignment.CENTER  # Çizgileri yazıyla hizalar
         )
 
-        page.add(ust_bar,ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,gider_column,alt_bar)
+        page.add(ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,ft.Text(value="\n"),gider_column,konteyner)
         page.update()
 
 # ------------------------------------------------------------------------------------------------------------------------
 
-    def ekran_degistir(e):
-        indis = e.control.selected_index
 
-        page.clean()
 
-        if indis == 0:
-            duzenli_gelirler_ekrani()
-        elif indis == 1:
-            ana_ekrani()
-        elif indis == 2:
-            duzenli_giderler_ekrani()
-
-    # ------------------------------------------------------------------------------------------------------------------------
-    Guncel_Para_Field=ft.TextField(value=f"Güncel Para: {guncelpara}",read_only=True,text_size=20,width=300,height=60,color=ft.Colors.AMBER,border_color=ft.Colors.AMBER_700,border_width=4)
+# ------------------------------------------------------------------------------------------------------------------------
+    Guncel_Para_Field=ft.TextField(value=f"Güncel Para= {guncelpara}",read_only=True,text_size=20,width=300,height=60,color=ft.Colors.AMBER,border_color=ft.Colors.AMBER_700,border_width=4)
     ana_row=ft.Row(controls=[Guncel_Para_Field],alignment=ft.MainAxisAlignment.CENTER)
 
-    ust_bar = ft.AppBar(
-        title=ft.Image(src="ulgen.png", height=40),
-        center_title=True,
-        color="black",
-        bgcolor=ft.Colors.AMBER,
-        automatically_imply_leading=False,
-    )
-
-    alt_bar = ft.NavigationBar(
-        indicator_color=ft.Colors.AMBER,
-
-        destinations=[
-            ft.NavigationBarDestination(icon=ft.Icons.ATTACH_MONEY, label="Düzenli Gelirler"),
-            ft.NavigationBarDestination(icon=ft.Icons.HOME_ROUNDED, label="Ana Ekran"),
-            ft.NavigationBarDestination(icon=ft.Icons.MONEY_OFF, label="Düzenli Giderler"),
-        ],
-        selected_index=1,
-        on_change=ekran_degistir
-
-    )
     ana_ekrani()
 
 
