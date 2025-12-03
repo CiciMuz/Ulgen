@@ -1,5 +1,4 @@
 import flet as ft
-from click import style
 from datetime import datetime
 
 def main(page:ft.Page):
