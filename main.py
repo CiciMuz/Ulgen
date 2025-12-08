@@ -1,6 +1,9 @@
 import flet as ft
 from datetime import datetime
 
+from flet.core.border_radius import horizontal
+
+
 def main(page:ft.Page):
     page.title = "Gelir Gider"
     page.vertical_alignment = ft.MainAxisAlignment.START
@@ -22,6 +25,301 @@ def main(page:ft.Page):
         )
     )
 
+#-------------------------------------------------------------------------------------------------------------
+    def borc_ekrani():
+        return
+
+    def borc_ekle(veri)->bool:
+
+        kontrol=veri["Miktar"]
+
+        try:
+            int(kontrol)
+        except:
+            print("Terminal Girdisi: Hata")
+            return False
+
+
+
+        mevcut_liste = page.client_storage.get("borclar_listesi")
+
+        if mevcut_liste is None or not isinstance(mevcut_liste, list):
+            mevcut_liste = []
+
+        tur=veri["Tür"]
+        ad=veri["Ad"]
+        miktar=veri["Miktar"]
+        tarih=veri["Tarih"]
+
+        yeni_veri = {"Tür": tur,"Ad": ad, "Miktar": miktar, "Tarih": tarih}
+
+
+        mevcut_liste.append(yeni_veri)
+
+
+        page.client_storage.set("borclar_listesi", mevcut_liste)
+
+        print("Kayıt başarılı!")
+        return True
+
+    def borc_ekleme_ekrani(e=None):
+        page.clean()
+        page.scroll = "auto"
+
+        ad_field = ft.TextField(label="Borç:",border_color=ft.Colors.AMBER)
+        miktar_field = ft.TextField(label="Miktar",border_color=ft.Colors.AMBER)
+
+        def onayla_tiklandi_alinan(e):
+
+            gelen_ad = ad_field.value
+            gelen_miktar = miktar_field.value
+            yeni_veri = {"Tür": "Borc", "Ad": gelen_ad, "Miktar": gelen_miktar, "Tarih": tam_zaman_getir()}
+
+            sonuc=borc_ekle(yeni_veri)
+
+            guncelpara_degistir(yeni_veri)
+
+            if sonuc== True:
+                borc_ekrani()
+            else:
+                print("")
+
+        def onayla_tiklandi_verilen(e):
+
+            gelen_ad = ad_field.value
+            gelen_miktar = miktar_field.value
+            yeni_veri = {"Tür": "Borc", "Ad": gelen_ad, "Miktar": str(-1*(int(gelen_miktar))), "Tarih": tam_zaman_getir()}
+
+            sonuc=borc_ekle(yeni_veri)
+
+            guncelpara_degistir(yeni_veri)
+
+            if sonuc== True:
+                borc_ekrani()
+            else:
+                print("")
+
+        alinan=ft.ElevatedButton(text="Alınan", color=ft.Colors.AMBER,on_click=onayla_tiklandi_alinan,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
+        verilen=ft.ElevatedButton(text="Verilen", color=ft.Colors.RED,on_click=onayla_tiklandi_verilen,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
+
+
+
+        page.add(
+            ft.Text("Yeni Borç Ekle", size=20,color=ft.Colors.AMBER),
+            ad_field,
+            miktar_field,
+            verilen,
+            alinan,
+            konteyner,
+        )
+        page.update()
+
+    def borc_kaldir_yeni(silinecek_veri):
+        yeni_liste = []
+        silindi_mi = False
+
+        yeni_liste = page.client_storage.get("borclar_listesi") or []
+
+        if silinecek_veri in yeni_liste:
+            yeni_liste.remove(silinecek_veri)
+
+        page.client_storage.set("borclar_listesi", yeni_liste)
+
+        borc_ekrani()
+
+    def borc_kaldirma_ekrani(e=None):
+        page.clean()
+        page.scroll = "auto"
+        yeni_liste=page.client_storage.get("borclar_listesi") or []
+
+        alinacak_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
+        verilecek_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
+
+        text=ft.Text("SİLMEK İSTEDİĞİNİZ BORCA TIKLAYIN", color="red", weight="bold")
+
+
+        def hem_sil_hem_guncelle(veri,e=None):
+            tur = veri["Tür"]
+            ad = veri["Ad"]
+            miktar = veri["Miktar"]
+            tarih = veri["Tarih"]
+
+            yeni_veri = {"Tür": tur, "Ad": ad, "Miktar": str(-1*int(miktar)), "Tarih": tarih}
+            borc_kaldir_yeni(veri)
+            guncelpara_degistir(yeni_veri)
+
+
+        for veri in yeni_liste:
+
+            ad = veri["Ad"]
+            miktar = veri["Miktar"]
+
+            if int(miktar) < 0:
+                temp_buton = ft.ElevatedButton(
+                    text=f"Açıklama: {ad}\nAlınacak: {str(-1 * int(miktar))}",
+                    height=75,
+                    width=225,
+                    color=ft.Colors.AMBER,
+                    bgcolor="black",
+                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
+                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
+                )
+                verilecek_column.controls.append(temp_buton)
+            else:
+                temp_buton = ft.ElevatedButton(
+                    text=f"Açıklama: {ad}\nVerilecek: {str(-1 * int(miktar))}",
+                    height=75,
+                    width=225,
+                    color="red",
+                    bgcolor="black",
+                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)),
+                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
+                )
+                alinacak_column.controls.append(temp_buton)
+
+        ayirici = ft.Row(
+            controls=[
+                ft.Container(height=1, bgcolor=ft.Colors.GREY_700, expand=True),
+
+                ft.Text("  Alınacaklar     -     Verilecekler  ", color=ft.Colors.GREY_500, italic=True, weight="bold"),
+
+                ft.Container(height=1, bgcolor=ft.Colors.GREY_700, expand=True),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+
+        orta_ayirici = ft.Container(width=2, height=500, bgcolor=ft.Colors.GREY_700)
+
+        sol_panel = ft.Container(content=alinacak_column, expand=1, alignment=ft.alignment.top_center)
+        sag_panel = ft.Container(content=verilecek_column, expand=1, alignment=ft.alignment.top_center)
+
+
+        butonlar_row = ft.Row(
+            controls=[sol_panel, orta_ayirici, sag_panel],
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            spacing=0
+        )
+
+
+        page.add(text, ayirici, butonlar_row, konteyner)
+        page.update()
+
+    def borc_ekrani():
+        page.clean()
+
+        page.scroll="auto"
+
+        eslesmeler=page.client_storage.get("borclar_listesi") or []
+
+        ekle_butonu=ft.ElevatedButton(text="Borç Ekle",width=150,on_click=borc_ekleme_ekrani,color=ft.Colors.AMBER,style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)))
+        kaldir_butonu = ft.ElevatedButton(text="Borç Kaldır",width=150, on_click=borc_kaldirma_ekrani,color="red",style = ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)))
+        eklekaldir=ft.Row(controls=[ekle_butonu,kaldir_butonu],alignment=ft.MainAxisAlignment.CENTER)
+        yeni_liste = page.client_storage.get("borclar_listesi") or []
+
+        alinacak_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
+        verilecek_column = ft.Column(alignment=ft.MainAxisAlignment.CENTER)
+
+        def hem_sil_hem_guncelle(veri,e=None):
+            tur = veri["Tür"]
+            ad = veri["Ad"]
+            miktar = veri["Miktar"]
+            tarih = veri["Tarih"]
+
+            yeni_veri = {"Tür": tur, "Ad": ad, "Miktar": str(-1*int(miktar)), "Tarih": tarih}
+
+            borc_kaldir_yeni(veri)
+            guncelpara_degistir(yeni_veri)
+
+        for veri in yeni_liste:
+
+            ad = veri["Ad"]
+            miktar = veri["Miktar"]
+
+            if int(miktar) < 0:
+                temp_buton = ft.ElevatedButton(
+                    text=f"Açıklama: {ad}\nAlınacak: {str(-1*int(miktar))}",
+                    height=75,
+                    width=225,
+                    color=ft.Colors.AMBER,
+                    bgcolor="black",
+                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
+                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
+                )
+                verilecek_column.controls.append(temp_buton)
+            else:
+                temp_buton = ft.ElevatedButton(
+                    text=f"Açıklama: {ad}\nVerilecek: {str(-1*int(miktar))}",
+                    height=75,
+                    width=225,
+                    color="red",
+                    bgcolor="black",
+                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)),
+                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
+                )
+                alinacak_column.controls.append(temp_buton)
+
+        ayirici = ft.Row(
+            controls=[
+                ft.Container(height=1, bgcolor=ft.Colors.GREY_700, expand=True),
+
+                ft.Text("  Alınacaklar     -     Verilecekler  ", color=ft.Colors.GREY_500, italic=True, weight="bold"),
+
+                ft.Container(height=1, bgcolor=ft.Colors.GREY_700, expand=True),
+            ],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER
+        )
+
+
+        sol_adet = len(alinacak_column.controls)
+        sag_adet = len(verilecek_column.controls)
+        max_adet = max(sol_adet, sag_adet)
+        hesaplanan_yukseklik = max(max_adet * 85, 150)
+
+
+        orta_ayirici = ft.Container(
+            width=2,
+            height=hesaplanan_yukseklik,
+            bgcolor=ft.Colors.GREY_700,
+        )
+
+
+        sol_panel = ft.Container(
+            content=alinacak_column,
+            expand=1,
+            alignment=ft.alignment.top_center
+        )
+
+
+        sag_panel = ft.Container(
+            content=verilecek_column,
+            expand=1,
+            alignment=ft.alignment.top_center
+        )
+
+
+        son_row = ft.Row(
+            controls=[sol_panel, orta_ayirici, sag_panel],
+            alignment=ft.MainAxisAlignment.CENTER,
+            vertical_alignment=ft.CrossAxisAlignment.START,
+            spacing=0
+        )
+
+
+        page.add(
+            ana_row,
+            eklekaldir,
+            ft.Text(value="\n"),
+            ayirici,
+            ft.Text(value="\n"),
+            son_row,
+            konteyner
+        )
+        page.update()
+#----------------------------------------------------------------------------------------------------------------
+
     def ekran_degistir(e):
         indis = e.control.selected_index
 
@@ -30,9 +328,11 @@ def main(page:ft.Page):
         if indis == 0:
             duzenli_gelirler_ekrani()
         elif indis == 1:
-            ana_ekrani()
-        elif indis == 2:
             duzenli_giderler_ekrani()
+        elif indis == 2:
+            ana_ekrani()
+        elif indis == 3:
+            borc_ekrani()
 
     ust_bar = ft.AppBar(
         title=ft.Image(src="ulgen.png", height=40),
@@ -47,10 +347,11 @@ def main(page:ft.Page):
 
         destinations=[
             ft.NavigationBarDestination(icon=ft.Icons.ATTACH_MONEY, label="Düzenli Gelirler"),
-            ft.NavigationBarDestination(icon=ft.Icons.HOME_ROUNDED, label="Ana Ekran"),
             ft.NavigationBarDestination(icon=ft.Icons.MONEY_OFF, label="Düzenli Giderler"),
+            ft.NavigationBarDestination(icon=ft.Icons.HOME_ROUNDED, label="Ana Ekran"),
+            ft.NavigationBarDestination(icon=ft.Icons.COLLECTIONS_BOOKMARK_ROUNDED, label="Borçlar"),
         ],
-        selected_index=1,
+        selected_index=2,
         on_change=ekran_degistir
 
     )
@@ -63,25 +364,23 @@ def main(page:ft.Page):
     guncelpara=page.client_storage.get("guncelpara") or "0"
 
     def bildirim_goster(mesaj, tur):
-        # Varsayılan değerler
+
         bg_renk = ft.Colors.BLUE_GREY
         ikon = ft.Icons.INFO
 
         if tur == "olumlu":
-            bg_renk = ft.Colors.GREEN_700  # Koyu Yeşil Arka Plan
-            ikon = ft.Icons.CHECK_CIRCLE  # Tik İkonu
+            bg_renk = ft.Colors.GREEN_700
+            ikon = ft.Icons.CHECK_CIRCLE
         elif tur == "olumsuz":
-            bg_renk = ft.Colors.RED_700  # Koyu Kırmızı Arka Plan
-            ikon = ft.Icons.ERROR_OUTLINE  # Hata İkonu
+            bg_renk = ft.Colors.RED_700
+            ikon = ft.Icons.ERROR_OUTLINE
 
         page.snack_bar = ft.SnackBar(
             content=ft.Row([
                 ft.Icon(ikon, color=ft.Colors.WHITE),
                 ft.Text(value=mesaj, color=ft.Colors.WHITE, size=16, weight="bold")
             ]),
-            bgcolor=bg_renk,  # Kutunun rengini değiştiriyoruz (Yazıyı değil)
-
-            # Navigation Bar'ın üzerine çıkması için Floating ve Margin şart
+            bgcolor=bg_renk,
             behavior=ft.SnackBarBehavior.FLOATING,
             margin=ft.margin.all(20),
 
@@ -345,7 +644,7 @@ def main(page:ft.Page):
 
 
 
-    def ana_ekrani():
+    def ana_ekrani(e=None):
         page.clean()
         page.scroll = "auto"
         eslesmeler=page.client_storage.get("tum_log") or []
@@ -367,6 +666,15 @@ def main(page:ft.Page):
             elif tur=="Gider":
                 temp = ft.TextField(multiline=True,value=f"Açıklama: {ad}\nMiktar: {miktar}\nTarih: {an}", border_color="red",read_only=True)
                 log_column.controls.append(temp)
+            elif tur=="Borc":
+                if int(miktar)>0:
+                    temp = ft.TextField(multiline=True, value=f"Alınan Borç: {ad}\nMiktar: {miktar}\nTarih: {an}",
+                                        border_color=ft.Colors.AMBER, read_only=True)
+                    log_column.controls.append(temp)
+                else:
+                    temp = ft.TextField(multiline=True, value=f"Verilen Borç: {ad}\nMiktar: {miktar}\nTarih: {an}",
+                                        border_color="red", read_only=True)
+                    log_column.controls.append(temp)
 
         log_column.controls = log_column.controls[::-1]
         butonlar_row=ft.Row(controls=[yeni_veri_ekrani_butonu,para_sifirla],alignment=ft.MainAxisAlignment.CENTER)
@@ -543,11 +851,7 @@ def main(page:ft.Page):
         page.add(ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,ft.Text(value="\n"),gider_column,konteyner)
         page.update()
 
-# ------------------------------------------------------------------------------------------------------------------------
 
-
-
-# ------------------------------------------------------------------------------------------------------------------------
     Guncel_Para_Field=ft.TextField(value=f"Güncel Para= {guncelpara}",read_only=True,text_size=20,width=300,height=60,color=ft.Colors.AMBER,border_color=ft.Colors.AMBER_700,border_width=4)
     ana_row=ft.Row(controls=[Guncel_Para_Field],alignment=ft.MainAxisAlignment.CENTER)
 
