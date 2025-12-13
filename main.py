@@ -22,6 +22,12 @@ def main(page:ft.Page):
             on_secondary_container=ft.Colors.BLACK,
             on_surface_variant=ft.Colors.WHITE,
             surface=ft.Colors.GREY_900,
+        ),
+        navigation_bar_theme=ft.NavigationBarTheme(
+            label_text_style=ft.TextStyle(
+                size=11,
+                weight=ft.FontWeight.W_500
+            )
         )
     )
 
@@ -161,7 +167,7 @@ def main(page:ft.Page):
                     width=225,
                     color=ft.Colors.AMBER,
                     bgcolor="black",
-                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10),side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
                     on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
                 )
                 verilecek_column.controls.append(temp_buton)
@@ -172,8 +178,9 @@ def main(page:ft.Page):
                     width=225,
                     color="red",
                     bgcolor="black",
-                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)),
-                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10),side=ft.BorderSide(width=2, color=ft.Colors.RED)),
+                    on_click=lambda e, v=veri: hem_sil_hem_guncelle(v),
+
                 )
                 alinacak_column.controls.append(temp_buton)
 
@@ -192,8 +199,8 @@ def main(page:ft.Page):
 
         orta_ayirici = ft.Container(width=2, height=500, bgcolor=ft.Colors.GREY_700)
 
-        sol_panel = ft.Container(content=alinacak_column, expand=1, alignment=ft.alignment.top_center)
-        sag_panel = ft.Container(content=verilecek_column, expand=1, alignment=ft.alignment.top_center)
+        sol_panel = ft.Container(content=verilecek_column, expand=1, alignment=ft.alignment.top_center)
+        sag_panel = ft.Container(content=alinacak_column, expand=1, alignment=ft.alignment.top_center)
 
 
         butonlar_row = ft.Row(
@@ -244,7 +251,7 @@ def main(page:ft.Page):
                     width=225,
                     color=ft.Colors.AMBER,
                     bgcolor="black",
-                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10),side=ft.BorderSide(width=2, color=ft.Colors.AMBER)),
                     on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
                 )
                 verilecek_column.controls.append(temp_buton)
@@ -255,7 +262,7 @@ def main(page:ft.Page):
                     width=225,
                     color="red",
                     bgcolor="black",
-                    style=ft.ButtonStyle(side=ft.BorderSide(width=2, color=ft.Colors.RED)),
+                    style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=10),side=ft.BorderSide(width=2, color=ft.Colors.RED)),
                     on_click=lambda e, v=veri: hem_sil_hem_guncelle(v)
                 )
                 alinacak_column.controls.append(temp_buton)
@@ -287,14 +294,14 @@ def main(page:ft.Page):
 
 
         sol_panel = ft.Container(
-            content=alinacak_column,
+            content=verilecek_column,
             expand=1,
             alignment=ft.alignment.top_center
         )
 
 
         sag_panel = ft.Container(
-            content=verilecek_column,
+            content=alinacak_column,
             expand=1,
             alignment=ft.alignment.top_center
         )
@@ -351,7 +358,7 @@ def main(page:ft.Page):
             ft.NavigationBarDestination(icon=ft.Icons.HOME_ROUNDED, label="Ana Ekran"),
             ft.NavigationBarDestination(icon=ft.Icons.COLLECTIONS_BOOKMARK_ROUNDED, label="Borçlar"),
         ],
-        selected_index=2,
+        selected_index=1,
         on_change=ekran_degistir
 
     )
@@ -845,7 +852,7 @@ def main(page:ft.Page):
                 ft.Container(height=1, bgcolor=ft.Colors.GREY_700, expand=True),
             ],
             alignment=ft.MainAxisAlignment.CENTER,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER  # Çizgileri yazıyla hizalar
+            vertical_alignment=ft.CrossAxisAlignment.CENTER
         )
 
         page.add(ana_row,butonlar_rowu,ft.Text(value="\n"),ayirici,ft.Text(value="\n"),gider_column,konteyner)
